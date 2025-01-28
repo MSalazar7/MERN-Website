@@ -1,11 +1,11 @@
+const fs = require('fs')
+
 const { validationResult } = require("express-validator");
-const mongoose = require('mongoose');
+const mongoose = require("mongoose");
 const HttpError = require("../models/http-error");
 const getCoordsForAddress = require("../util/location");
 const Place = require("../models/place");
 const User = require("../models/user");
-
-
 
 const getPlaceById = async (req, res, next) => {
   const placeId = req.params.pid;
@@ -32,13 +32,13 @@ const getPlaceById = async (req, res, next) => {
   res.json({ place: place.toObject({ getters: true }) });
 };
 
-const getPlacesbyUserId = async (req, res, next) => {
+const getPlacesByUserId = async (req, res, next) => {
   const userId = req.params.uid;
 
   //let places;
   let userWithPlaces;
   try {
-    userWithPlaces = await User.findById(userId).populate('places');
+    userWithPlaces = await User.findById(userId).populate("places");
     //places = await Place.find({ creator: userId });
   } catch (err) {
     const error = new HttpError(
@@ -54,7 +54,9 @@ const getPlacesbyUserId = async (req, res, next) => {
     );
   }
   res.json({
-    places: userWithPlaces.places.map((place) => place.toObject({ getters: true })),
+    places: userWithPlaces.places.map((place) =>
+      place.toObject({ getters: true })
+    ),
   });
 };
 
@@ -66,7 +68,7 @@ const createPlace = async (req, res, next) => {
     );
   }
 
-  const { title, description, address, creator } = req.body;
+  const { title, description, address } = req.body;
 
   let coordinates;
   try {
@@ -80,14 +82,13 @@ const createPlace = async (req, res, next) => {
     description,
     address,
     location: coordinates,
-    image:
-      "https://www.google.com/url?sa=i&url=https%3A%2F%2Fwww.vecteezy.com%2Ffree-photos%2Ffunny-pictures&psig=AOvVaw2LOFom0tsvFRBtPqk14ADf&ust=1734642011890000&source=images&cd=vfe&opi=89978449&ved=0CBQQjRxqFwoTCIjkxqWbsooDFQAAAAAdAAAAABAE",
-    creator
+    image: req.file.path,
+    creator: req.userData.userId,
   });
 
   let user;
   try {
-    user = await User.findById(creator);
+    user = await User.findById(req.userData.userId);
   } catch (err) {
     const error = new HttpError("Creating place failed, please try again", 500);
     return next(error);
@@ -137,6 +138,13 @@ const updatePlace = async (req, res, next) => {
     return next(error);
   }
 
+  if(place.creator.toString() !== req.userData.userId){
+    const error = new HttpError(
+      'You are not allowed to edit this place', 401
+    );
+    return next(error);
+  }
+
   place.title = title;
   place.description = description;
 
@@ -158,7 +166,7 @@ const deletePlace = async (req, res, next) => {
 
   let place;
   try {
-    place = await Place.findById(placeId).populate('creator');
+    place = await Place.findById(placeId).populate("creator");
   } catch (err) {
     const error = new HttpError(
       "Something went wrong, could not delete place",
@@ -167,7 +175,7 @@ const deletePlace = async (req, res, next) => {
     return next(error);
   }
 
-  if (!place){
+  if (!place) {
     const error = new HttpError(
       "Something went wrong, could not find place for this id",
       404
@@ -175,12 +183,21 @@ const deletePlace = async (req, res, next) => {
     return next(error);
   }
 
+  if(place.creator.id !== req.userData.userId){
+    const error = new HttpError(
+      'You are not allowed to delete this place', 401
+    );
+  }
+
+  const imagePath = place.image;
+
+
   try {
     const sess = await mongoose.startSession();
     sess.startTransaction();
-    await place.deleteOne({ session: sess }); 
+    await place.deleteOne({ session: sess });
     place.creator.places.pull(place);
-    await place.creator.save(({session:sess}));
+    await place.creator.save({ session: sess });
     await sess.commitTransaction();
   } catch (err) {
     const error = new HttpError(
@@ -190,11 +207,14 @@ const deletePlace = async (req, res, next) => {
     return next(error);
   }
 
+  fs.unlink(imagePath, err => {
+    console.log(err)
+  });
   res.status(200).json({ message: "Deleted place." });
 };
 
 exports.getPlaceById = getPlaceById;
-exports.getPlacesbyUserId = getPlacesbyUserId;
+exports.getPlacesByUserId = getPlacesByUserId;
 exports.createPlace = createPlace;
 exports.updatePlace = updatePlace;
 exports.deletePlace = deletePlace;
