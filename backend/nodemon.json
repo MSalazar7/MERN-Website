@@ -1,0 +1,10 @@
+{
+    "env": {
+      "DB_USER": "your-mongodb-username",
+      "DB_PASS": "your-mongodb-password",
+      "DB_NAME": "your-database-name",
+      "GOOGLE_API_KEY": "your-google-api-key",
+      "JWT_KEY": "your-jwt-secret"
+    }
+  }
+  
