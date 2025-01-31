@@ -65,6 +65,7 @@ cd MERN-Website
 
 ### 4. Install dependencies for both backend and frontend:
 ```bash
+cd ../backend
 npm install
 cd ../frontend
 npm install
