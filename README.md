@@ -26,7 +26,7 @@ Ensure you have the following installed:
 ### 1. Clone the repository:
 ```bash
 git clone https://github.com/MSalazar7/MERN-Website.git
-cd mern-places-app
+cd MERN-Website
 ```
 
 ### 2. Set up the backend environment:
